@@ -5,7 +5,7 @@ import scala.io.Source
 import scala.annotation.tailrec
 
 object Day10 {
-  def hash(size: Int, rounds: Int, input: List[Int]): List[Int] = {
+  def hash(size: Int, rounds: Int, input: Seq[Int]): Seq[Int] = {
     val l = (0 to size - 1).toArray
 
     def move(cp: Int, i: Int) = (cp + i) % l.size
@@ -46,14 +46,14 @@ object Day10 {
     l.toList
   }
 
-  def dense(l: List[Int]) =
-    l.sliding(16, 16)
+  def dense(l: Seq[Int]) =
+    l.grouped(16)
       .toList
       .map(l => l.reduceLeft((a, b) => a ^ b))
-      .map(v => v.toHexString)
+      .map(v => f"$v%02x")
       .mkString("")
 
-  def hash(input: List[Int]): String = dense(hash(256, 64, input))
+  def hash(input: Seq[Int]): String = dense(hash(256, 64, input))
 
   def main(args: Array[String]) {
     println("test part1=" + hash(5, 1, List(3, 4, 1, 5)))
