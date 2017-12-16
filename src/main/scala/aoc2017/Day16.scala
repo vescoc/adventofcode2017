@@ -4,6 +4,8 @@ import scala.annotation.tailrec
 
 import scala.io.Source
 
+import Benchmark._
+
 object Day16 {
   def solve(length: Int, repeat: Int, moves: Iterator[String]) = {
     val spinRe = """s(\d+)""".r
@@ -87,9 +89,11 @@ object Day16 {
     val test = List("s1,x3/4,pe/b")
     val input = Source.fromFile("data/day16/input.txt").getLines.toList
 
-    println("part 1 test: " + solve(5, 1, test.toIterator))
-    println("part 1: " + solve(16, 1, input.toIterator))
-    println("part 2 test: " + solve(5, 1000000000, test.toIterator))
-    println("part 2: " + solve(16, 1000000000, input.toIterator))
+    bench {
+      println("part 1 test: " + solve(5, 1, test.toIterator))
+      println("part 1: " + solve(16, 1, input.toIterator))
+      println("part 2 test: " + solve(5, 1000000000, test.toIterator))
+      println("part 2: " + solve(16, 1000000000, input.toIterator))
+    }
   }
 }
