@@ -12,56 +12,56 @@ object Day16 {
 
     val calc = {
       val fs = moves
-      .flatMap(line => line.split(","))
-      .map((m) => {
-        m match {
-          case spinRe(sl) => {
-            def t(arr: Array[Char]) = {
-              val l = sl.toInt
-              arr.takeRight(l) ++ arr.dropRight(l)
+        .flatMap(line => line.split(","))
+        .map((m) => {
+          m match {
+            case spinRe(sl) => {
+              def t(arr: Array[Char]) = {
+                val l = sl.toInt
+                arr.takeRight(l) ++ arr.dropRight(l)
+              }
+
+              t _
             }
+            case exchangeRe(sp1, sp2) => {
+              def t(arr: Array[Char]) = {
+                val p1 = sp1.toInt
+                val p2 = sp2.toInt
 
-            t _
-          }
-          case exchangeRe(sp1, sp2) => {
-            def t(arr: Array[Char]) = {
-              val p1 = sp1.toInt
-              val p2 = sp2.toInt
+                val v = arr(p1)
 
-              val v = arr(p1)
+                arr(p1) = arr(p2)
+                arr(p2) = v
 
-              arr(p1) = arr(p2)
-              arr(p2) = v
+                arr
+              }
 
-              arr
+              t _
             }
+            case partnerRe(sp1, sp2) => {
+              def t(arr: Array[Char]) = {
+                val p1 = sp1.head
+                val p2 = sp2.head
 
-            t _
-          }
-          case partnerRe(sp1, sp2) => {
-            def t(arr: Array[Char]) = {
-              val p1 = sp1.head
-              val p2 = sp2.head
+                val i1 = arr.indexOf(p1)
+                val i2 = arr.indexOf(p2)
 
-              val i1 = arr.indexOf(p1)
-              val i2 = arr.indexOf(p2)
+                val v = arr(i1)
 
-              val v = arr(i1)
+                arr(i1) = arr(i2)
+                arr(i2) = v
 
-              arr(i1) = arr(i2)
-              arr(i2) = v
+                arr
+              }
 
-              arr
+              t _
             }
-
-            t _
+            case o => throw new MatchError(s"invalid input $o")
           }
-          case o => throw new MatchError(s"invalid input $o")
-        }
-      }).toList
+        }).toList
 
       (arr: Array[Char]) => fs.foldLeft(arr)((arr, f) => f(arr))
-    }  
+    }
 
     val start = (for (i <- 0 until length) yield ('a' + i).toChar).toArray
     val startStr = start.mkString("")
