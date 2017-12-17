@@ -48,5 +48,81 @@ object Day17 {
       println("part 2 test: " + spinlock0(3, 50 * 1000 * 1000))
       println("part 2: " + spinlock0(366, 50 * 1000 * 1000))
     }
+
+    bench("recursion") {
+      println("part 1: " + solve(366))
+      println("part 2: " + spinlock0(366, 50 * 1000 * 1000))
+    }
+
+    bench("foldLeft") {
+      val count1 = 2017
+      val count2 = 50000000
+
+      val input = 366
+
+      val buffer = List(0)
+
+      case class State(currentPosition: Int, buffer: List[Int])
+
+      val result1 = (1 to count1).foldLeft(State(0, buffer))((s, i) => {
+        val newPosition = (s.currentPosition + input) % s.buffer.size + 1
+        val splits = s.buffer.splitAt(newPosition)
+        State(newPosition, splits._1 ::: i :: splits._2)
+      })
+
+      println(result1.buffer(result1.buffer.indexOf(count1) + 1))
+
+      val result2 = (1 to count2).foldLeft((0, Option.empty[Int]))((s, i) => {
+        val newPosition = (s._1 + input) % i + 1
+        newPosition match {
+          case 1 => (newPosition, Some(i))
+          case _ => (newPosition, s._2)
+        }
+      })
+
+      println(result2._2)
+    }
+
+    {
+      val mon = Mon("recursion")
+      for (i <- 1 to 10)
+        mon {
+          solve(366)
+          spinlock0(366, 50 * 1000 * 1000)
+        }
+
+      println(mon.info)
+    }
+
+    {
+      val mon = Mon("foldLeft")
+      for (i <- 1 to 10)
+        mon {
+          val count1 = 2017
+          val count2 = 50000000
+
+          val input = 366
+
+          val buffer = List(0)
+
+          case class State(currentPosition: Int, buffer: List[Int])
+
+          val result1 = (1 to count1).foldLeft(State(0, buffer))((s, i) => {
+            val newPosition = (s.currentPosition + input) % s.buffer.size + 1
+            val splits = s.buffer.splitAt(newPosition)
+            State(newPosition, splits._1 ::: i :: splits._2)
+          })
+
+          val result2 = (1 to count2).foldLeft((0, Option.empty[Int]))((s, i) => {
+            val newPosition = (s._1 + input) % i + 1
+            newPosition match {
+              case 1 => (newPosition, Some(i))
+              case _ => (newPosition, s._2)
+            }
+          })
+        }
+
+      println(mon.info)
+    }
   }
 }
