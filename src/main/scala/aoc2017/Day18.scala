@@ -22,7 +22,7 @@ object Day18 {
   object CPUState extends Enumeration {
     type CPUState = Value
 
-    val running, waiting, stopped = Value
+    val running, waiting, stopped, deadlock = Value
   }
 
   import CPUState.CPUState
@@ -42,15 +42,19 @@ object Day18 {
     def +(p: (String, Long)) = copy(regs = regs + p, pc = pc + 1)
     def nop = copy(pc = pc + 1)
     def pc(off: Int) = copy(pc = pc + off)
-    def waiting = copy(cpuState = CPUState.waiting)
-    def run = copy(cpuState = CPUState.running)
-    def stop = copy(cpuState = CPUState.stopped)
 
-    def stopped = cpuState == CPUState.stopped
-    def running = cpuState == CPUState.running
+    def waiting = copy(cpuState = CPUState.waiting)
+    def running = copy(cpuState = CPUState.running)
+    def stopping = copy(cpuState = CPUState.stopped)
+    def deadlocking = copy(cpuState = CPUState.deadlock)
+
+    def isStopped = cpuState == CPUState.stopped
+    def isRunning = cpuState == CPUState.running
+    def isDeadlocked = cpuState == CPUState.deadlock
+    def isWaiting = cpuState == CPUState.waiting
   }
 
-  def parse(line: String, rcvNopWith0: Boolean) = {
+  def parse(line: String, rcvNopWith0: Boolean): (State) => (State, String) = {
     line match {
       case sndRe(r)  => (state: State) => {
         val rval = state.get(r)
@@ -128,14 +132,14 @@ object Day18 {
 
   @tailrec
   def execute(name: String, program: List[(State) => (State, String)], state: State, step: Int = 0, limit: Int = Integer.MAX_VALUE): (Int, State) = {
-    if (state.stopped)
+    if (state.isStopped || state.isDeadlocked)
       (step, state)
     else {
       val runningState = (
-        if (state.running)
+        if (state.isRunning)
           state
         else
-          state.run
+          state.running
       )
 
       if (step == limit)
@@ -143,12 +147,12 @@ object Day18 {
       else {
         val pc = runningState.pc
         if (pc < 0 || pc >= program.size)
-          (step, state.stop)
+          (step, state.stopping)
         else {
           val (newState, debug) = program(pc)(state)
           //println(debug + ": " + state + " -> " + newState)
           //println(s"$name: $debug")
-          if (newState.running)
+          if (newState.isRunning)
             execute(name, program, newState, step + 1, limit)
           else
             (step + 1, newState)
@@ -237,13 +241,17 @@ object Day18 {
     {
       val msg = new Msg()
 
-      val s = (for (i <- 0 to 1000000) yield i).foldLeft((State(queue = msg.queueA, regs = Map("p" -> 0)), State(queue = msg.queueB, regs = Map("p" -> 1)), 0, 0))((s, i) => {
-        val (c1, s1) = execute("A", input, s._1, limit = 4000)
-        val (c2, s2) = execute("B", input, s._2, limit = 4000)
-        (s1, s2, s._3 + c1, s._4 + c2)
-      })
+      @tailrec
+      def ex(step1: Int = 0, state1: State = State(queue = msg.queueA, regs = Map("p" -> 0)), step2: Int = 0, state2: State = State(queue = msg.queueB, regs = Map("p" -> 1))): ((Int, State), (Int, State)) = {
+        val (c1, s1) = execute("A", input, state1, limit = 4000)
+        val (c2, s2) = execute("B", input, state2, limit = 4000)
+        if (state1 == s1 && state2 == s2 && s1.isWaiting && s2.isWaiting)
+          ((step1 + c1, s1.deadlocking), (step2 + c2, s2.deadlocking))
+        else
+          ex(step1 + c1, s1, step2 + c2, s2)
+      }
 
-      println(s)
+      println(ex())
     }
   }
 }
