@@ -10,15 +10,24 @@ object Day20 {
   val lineRe = """p=<\s*([-0-9]+),\s*([-0-9]+),\s*([-0-9]+)>,\s*v=<\s*([-0-9]+),\s*([-0-9]+),\s*([-0-9]+)>,\s*a=<\s*([-0-9]+),\s*([-0-9]+),\s*([-0-9]+)>""".r
 
   trait Number[T] extends Ordered[T] {
+    def *(v: T): T
     def *(v: Int): T
+    def /(v: T): T
     def /(v: Int): T
     def +(v: T): T
+    def -(v: T): T
+    def `unary_-`: T
+    def %(v: T): T
+    def >(v: Int): Boolean
     def abs: T
+    def sqrt: Option[T]
   }
 
   case class Vector[T <% Number[T]](x: T, y: T, z: T) {
+    def *(v: T) = Vector[T](x * v, y * v, z * v)
     def *(v: Int) = Vector[T](x * v, y * v, z * v)
     def +(v: Vector[T]) = copy(x + v.x, y + v.y, z + v.z)
+    def /(v: T) = Vector[T](x / v, y / v, z / v)
     def /(v: Int) = Vector[T](x / v, y / v, z / v)
     def ==(v: Vector[T]) = x == v.x && y == v.y && z == v.z
   }
@@ -28,10 +37,76 @@ object Day20 {
 
   import Vector._
 
+  case class Solution[T <% Number[T]](finite: Boolean, value: Option[T])
+
   case class Particle[T <% Number[T]](id: Int, p: Vector[T], v: Vector[T], a: Vector[T]) {
+    def step = copy(p = p + v + a, v = v + a)
+
     def apply(t: Int): Particle[T] = copy(p = (p + (v * 2 + a * t + a) * t / 2), v = (a * t + v))
 
-    def step = copy(p = p + v + a, v = v + a)
+    def collide(other: Particle[T]): Option[T] = {
+      def solve(p1: T, v1: T, a1: T, p2: T, v2: T, a2: T) = {
+        if (a1 == a2) {
+          if (v1 == v2) {
+            if (p1 == v2)
+              Solution[T](false, None)
+            else
+              Solution[T](true, None)
+          } else {
+            val n = p1 - p2
+            val d = v2 - v1
+            if (n % d == 0)
+              Solution[T](true, Some(n / d))
+            else
+              Solution[T](true, None)
+          }
+        } else {
+          val det = (v2 * v2 * 4 + (- v1 * 8 + a2 * 4 - a1 * 4) + v1 * v1 * 4 + (a1 * 4 - a2 * 4) * v1 + (a2 * 8 - a1 * 8) * p2 + (a1 * 8 - a2 * 8) * p1 + a2 * a2 - a1 * a2 * 2 + a1 * a1).sqrt
+          det match {
+            case None => Solution[T](true, None)
+            case Some(det) => {
+              val ext = v2 * 2 - v1 * 2 + a2 - a1
+              val d = a2 * 2 - a1 * 2
+
+              val n1 = det - ext
+              if (n1 / d > 0 && n1 % d == 0)
+                Solution[T](true, Some(n1 / d))
+              else {
+                val n2 = det + ext
+                if (n2 / d > 0 && n2 % d == 0)
+                  Solution[T](true, Some(n2 / d))
+                else
+                  Solution[T](true, None)
+              }
+            }
+          }
+        }
+      }
+
+      solve(p.x, v.x, a.x, other.p.x, other.v.x, other.a.x) match {
+        case Solution(true, None) => None
+        case Solution(true, Some(t1)) =>
+          solve(p.y, v.y, a.y, other.p.y, other.v.y, other.a.y) match {
+            case Solution(true, None) => None
+            case Solution(true, Some(t2)) if (t1 == t2) => solve(p.z, v.z, a.z, other.p.z, other.v.z, other.a.z) match {
+              case Solution(true, None) => None
+              case Solution(true, Some(t3)) if (t1 == t3) => Some(t1)
+              case Solution(true, Some(_)) => None
+              case Solution(false, None) => Some(t1)
+            }
+            case Solution(true, Some(_)) => None
+            case Solution(false, None) => solve(p.z, v.z, a.z, other.p.z, other.v.z, other.a.z) match {
+              case Solution(true, None) => None
+              case Solution(true, Some(t3)) if (t1 == t3) => Some(t1)
+              case Solution(true, Some(_)) => None
+              case Solution(false, None) => Some(t1)
+            }
+            case Solution(false, Some(t2)) => ???
+          }
+        case Solution(false, None) => Some(p.x - p.x) // LOL
+        case Solution(false, Some(t1)) => ???
+      }
+    }
   }
 
   def parse[T <% Number[T]](lines: List[String])(implicit f: (String) => T) = {
@@ -48,10 +123,10 @@ object Day20 {
     .groupBy(p => abs(p.a))
     .minBy(p => p._1)
 
-  def solvePart2[T <% Number[T]](particles: List[Particle[T]]) = {
+  def solvePart2Simulation[T <% Number[T]](particles: List[Particle[T]], limit: Int = 1000) = {
     @tailrec
     def step(t: Int = 0, current: List[Particle[T]] = particles): List[Particle[T]] =
-      if (current.size <= 1 || t > 100000)
+      if (current.size <= 1 || t > limit)
         current
       else
         step(
@@ -68,6 +143,12 @@ object Day20 {
     step().sortBy(p => p.id)
   }
 
+  def solvePart2Mathe[T <% Number[T]](particles: List[Particle[T]]) =
+    particles
+      .combinations(2)
+      .map(p => (p(0), p(1), p(0).collide(p(1))))
+      .toList
+
   implicit def toLong(str: String) = str.toLong
   implicit class LongView(l: Long) extends Number[Long] {
     def *(v: Int): Long = l * v
@@ -75,15 +156,25 @@ object Day20 {
     def +(v: Long): Long = l + v
     def abs: Long = math.abs(l)
     def compare(that: Long): Int = l.asInstanceOf[java.lang.Long].compareTo(that)
-  }
 
-  implicit def toBigInt(str: String) = BigInt(str)
-  implicit class BigIntView(l: BigInt) extends Number[BigInt] {
-    def *(v: Int): BigInt = l * v
-    def /(v: Int): BigInt = l / v
-    def +(v: BigInt): BigInt = l + v
-    def abs: BigInt = l.abs
-    def compare(that: BigInt) = l.compare(that)
+    def /(v: Long): Long = l / v
+    def >(v: Int): Boolean = l > v
+    def -(v: Long): Long = l - v
+    def %(v: Long): Long = l % v
+    def *(v: Long): Long = l * v
+    def `unary_-`: Long = -l
+
+    def sqrt: Option[Long] = {
+      if (l < 0)
+        None
+      else {
+        val r = math.sqrt(l.toDouble)
+        if (r == math.round(r))
+          Some(r.toLong)
+        else
+          None
+      }
+    }
   }
   
   def main(args: Array[String]) {
@@ -105,14 +196,19 @@ object Day20 {
 
     println("part1 test=" + solvePart1(test1Particles))
 
-    val inputParticles = parse[BigInt](input)
+    val inputParticles = parse[Long](input)
 
     println("part1 input=" + solvePart1(inputParticles))
 
     val test2Particles = parse[Long](test2)
 
-    println("part2 test=" + solvePart2(test2Particles))
+    println("part2 test simulation=" + solvePart2Simulation(test2Particles))
 
-    println("part2 input=" + solvePart2(inputParticles).size)
+    println("part2 input simulation=" + solvePart2Simulation(inputParticles).size)
+
+    println(solvePart2Mathe(inputParticles).filter(t => t._3 match {
+      case Some(_) => true
+      case None => false
+    }).size)
   }
 }
