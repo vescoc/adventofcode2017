@@ -81,10 +81,10 @@ object Day22 {
   val part2BurstDelegate =
     (state: State) => {
       val (count, map, direction) = state.map.get(state.current) match {
+        case Some(c) if (c == 'W') => (1, state.map + (state.current -> '#'), state.direction)
+        case Some(c) if (c == '#') => (0, state.map + (state.current -> 'F'), state.direction.right)
+        case Some(c) if (c == 'F') => (0, state.map - state.current, state.direction.reverse)
         case None => (0, state.map + (state.current -> 'W'), state.direction.left)
-        case Some(c) if (c == 'W') => (1, state.map -> (state.current -> '#'), state.direction)
-        case Some(c) if (c == '#') => (0, state.map -> (state.current -> 'F'), state.direction.right)
-        case Some(c) if (c == 'F') => (0, state.map - state.current, state.direction.right)
       }
       (count, State(map, state.current + direction, direction))
     }
@@ -110,12 +110,20 @@ object Day22 {
     val testState = State(test)
     val inputState = State(input)
 
-    println("part1 test 5 " + burst(5, testState))
+    println("part1 test 5: " + burst(5, testState))
 
     val (testCount, _) = burst(10000, testState)
-    println(s"part1 test $testCount")
+    println(s"part1 test: $testCount")
 
     val (inputCount, _) = burst(10000, inputState)
-    println(s"part1 input $inputCount")
+    println(s"part1 input: $inputCount")
+
+    println("part2 test 100: " + burst(100, testState, part2BurstDelegate))
+
+    val (testCountPart2, _) = burst(10000000, testState, part2BurstDelegate)
+    println(s"part2 test: $testCountPart2")
+
+    val (inputCountPart2, _) = burst(10000000, inputState, part2BurstDelegate)
+    println(s"part2 input: $inputCountPart2")
   }
 }
