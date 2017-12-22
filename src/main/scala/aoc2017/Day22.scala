@@ -5,36 +5,41 @@ import scala.annotation.tailrec
 import scala.io.Source
 
 object Day22 {
-  case class Point(x: Int, y: Int)
+  case class Point(x: Int, y: Int) {
+    def +(direction: Direction) = copy(x + direction.dx, y + direction.dy)
+  }
 
-  case class Direction(x: Int = 0, y: Int = -1) {
+  case class Direction(dx: Int = 0, dy: Int = -1) {
     def right =
-      if (x > 0)
-        copy(x = 0, y = 1)
-      else if (x < 0)
-        copy(x = 0, y = -1)
-      else if (y > 0)
-        copy(x = -1, y = 0)
+      if (dx > 0)
+        copy(dx = 0, dy = 1)
+      else if (dx < 0)
+        copy(dx = 0, dy = -1)
+      else if (dy > 0)
+        copy(dx = -1, dy = 0)
       else
-        copy(x = 1, y = 0)
+        copy(dx = 1, dy = 0)
 
     def left =
-      if (x > 0)
-        copy(x = 0, y = -1)
-      else if (x < 0)
-        copy(x = 0, y = 1)
-      else if (y > 0)
-        copy(x = 1, y = 0)
+      if (dx > 0)
+        copy(dx = 0, dy = -1)
+      else if (dx < 0)
+        copy(dx = 0, dy = 1)
+      else if (dy > 0)
+        copy(dx = 1, dy = 0)
       else
-        copy(x = -1, y = 0)
+        copy(dx = -1, dy = 0)
   }
 
   case class State(map: Set[Point], current: Point, direction: Direction) {
-    def burst = {
-      map.get(current) match {
-        case None => 
+    def burst =
+      if (!map.contains(current)) {
+        val newDirection = direction.left
+        (1, State(map + current, current + newDirection, newDirection))
+      } else {
+        val newDirection = direction.right
+        (0, State(map - current, current + newDirection, newDirection))
       }
-    }
   }
   object State {
     def apply(lines: Seq[String]) = {
@@ -65,6 +70,7 @@ object Day22 {
         (count, state)
       else {
         val (c, newState) = state.burst
+        //println(state + " -> " + newState)
         burst(step + 1, count + c, newState)
       }
 
@@ -73,9 +79,15 @@ object Day22 {
 
   def main(args: Array[String]) {
     val test = List("..#", "#..", "...")
+    val input = Source.fromFile("data/day22/input.txt").getLines.toList
 
-    val state = State(test)
+    val testState = State(test)
+    val inputState = State(input)
 
-    println(state)
+    val (testCount, _) = burst(10000, testState)
+    println(s"part1 test $testCount")
+
+    val (inputCount, _) = burst(10000, inputState)
+    println(s"part1 input $inputCount")
   }
 }
