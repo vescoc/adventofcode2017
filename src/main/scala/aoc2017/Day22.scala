@@ -29,13 +29,15 @@ object Day22 {
         copy(dx = 1, dy = 0)
       else
         copy(dx = -1, dy = 0)
+
+    def reverse = copy(dx = -dx, dy = -dy)
   }
 
-  case class State(map: Set[Point], current: Point, direction: Direction) {
+  case class State(map: Map[Point, Char], current: Point, direction: Direction) {
     def burst =
       if (!map.contains(current)) {
         val newDirection = direction.left
-        (1, State(map + current, current + newDirection, newDirection))
+        (1, State(map + (current -> '#'), current + newDirection, newDirection))
       } else {
         val newDirection = direction.right
         (0, State(map - current, current + newDirection, newDirection))
@@ -48,28 +50,52 @@ object Day22 {
 
       val current = Point(xSize / 2, ySize / 2)
 
-      val map: Set[Point] = lines.zipWithIndex.map(p => {
+      val map: Map[Point, Char] = lines.zipWithIndex.map(p => {
         val (line, y) = p
         line.zipWithIndex.flatMap(p => {
           val (c, x) = p
           if (c == '#')
-            Some(Point(x, y))
+            Some(Point(x, y) -> '#')
           else
             None
         })
-      }).flatten.toSet
+      }).flatten.toMap
 
       new State(map, current, Direction())
     }
   }
 
-  def burst(limit: Int, startState: State): (Int, State) = {
+  type BurstDelegate = (State) => (Int, State)
+
+  val part1BurstDelegate =
+    (state: State) => {
+      if (!state.map.contains(state.current)) {
+        val newDirection = state.direction.left
+        (1, State(state.map + (state.current -> '#'), state.current + newDirection, newDirection))
+      } else {
+        val newDirection = state.direction.right
+        (0, State(state.map - state.current, state.current + newDirection, newDirection))
+      }
+    }
+
+  val part2BurstDelegate =
+    (state: State) => {
+      val (count, map, direction) = state.map.get(state.current) match {
+        case None => (0, state.map + (state.current -> 'W'), state.direction.left)
+        case Some(c) if (c == 'W') => (1, state.map -> (state.current -> '#'), state.direction)
+        case Some(c) if (c == '#') => (0, state.map -> (state.current -> 'F'), state.direction.right)
+        case Some(c) if (c == 'F') => (0, state.map - state.current, state.direction.right)
+      }
+      (count, State(map, state.current + direction, direction))
+    }
+
+  def burst(limit: Int, startState: State, burstDelegate: BurstDelegate = part1BurstDelegate): (Int, State) = {
     @tailrec
     def burst(step: Int = 0, count: Int = 0, state: State = startState): (Int, State) =
       if (step >= limit)
         (count, state)
       else {
-        val (c, newState) = state.burst
+        val (c, newState) = burstDelegate(state)
         //println(state + " -> " + newState)
         burst(step + 1, count + c, newState)
       }
@@ -83,6 +109,8 @@ object Day22 {
 
     val testState = State(test)
     val inputState = State(input)
+
+    println("part1 test 5 " + burst(5, testState))
 
     val (testCount, _) = burst(10000, testState)
     println(s"part1 test $testCount")
