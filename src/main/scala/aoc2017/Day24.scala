@@ -1,6 +1,10 @@
 package aoc2017
 
+import scala.annotation.tailrec
+
 import scala.io.Source
+
+import Benchmark._
 
 object Day24 {
   val re = """(\d+)/(\d+)""".r
@@ -9,24 +13,22 @@ object Day24 {
     lines.map(line => line match {
       case re(p1, p2) => (p1.toInt, p2.toInt)
     })
-
-  def strength(ports: List[(Int, Int)]) = ports.foldLeft(0)((sum, p) => sum + p._1 + p._2)
   
   def search(ports: List[(Int, Int)], maxBy: ((Int, List[(Int, Int)])) => Int): (Int, List[(Int, Int)]) = {
-    def search(currentPin: Int = 0, current: List[(Int, Int)] = List(), visited: Set[List[(Int, Int)]] = Set(), remainder: Set[(Int, Int)] = ports.toSet): (Int, List[(Int, Int)]) = {
-      def find(pin: Int, ports: Set[(Int, Int)]) = ports.filter(p => (p._1 == pin || p._2 == pin) && !visited.contains(p :: current))
+    def search(currentPin: Int = 0, current: (Int, List[(Int, Int)]) = (0, List()), visited: Set[List[(Int, Int)]] = Set(), remainder: Set[(Int, Int)] = ports.toSet): (Int, List[(Int, Int)]) = {
+      def find(pin: Int, ports: Set[(Int, Int)]) = ports.filter(p => (p._1 == pin || p._2 == pin) && !visited.contains(p :: current._2))
 
       val candidates = find(currentPin, remainder)
       if (candidates.size == 0)
-        (strength(current), current)
+        current
       else
         candidates
           .map(candidate => {
-            val target = candidate :: current
+            val target = (current._1 + candidate._1 + candidate._2, candidate :: current._2)
             search(
               (if (candidate._1 == currentPin) candidate._2 else candidate._1),
               target,
-              visited + target,
+              visited + target._2,
               remainder - candidate
             )
           })
@@ -56,10 +58,18 @@ object Day24 {
     def part1MaxBy(target: (Int, List[(Int, Int)])) = target._1
     def part2MaxBy(target: (Int, List[(Int, Int)])) = target._2.size * 1000000 + target._1
 
-    println("part 1 test: " + search(test, part1MaxBy))
-    println("part 1 input: " + search(input, part1MaxBy))
+    bench("part 1 test") {
+      println("part 1 test: " + search(test, part1MaxBy))
+    }
+    bench("part 1 input") {
+      println("part 1 input: " + search(input, part1MaxBy))
+    }
 
-    println("part 2 test: " + search(test, part2MaxBy))
-    println("part 2 input: " + search(input, part2MaxBy))
+    bench("part 2 test") {
+      println("part 2 test: " + search(test, part2MaxBy))
+    }
+    bench("part 2 input") {
+      println("part 2 input: " + search(input, part2MaxBy))
+    }
   }
 }
