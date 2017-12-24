@@ -15,6 +15,7 @@ object Day23 {
   val mulRe = """mul\s+([a-h])\s+([a-h])""".r
   val jnzIntIntRe = """jnz\s+([-0-9]+)\s+([-0-9]+)""".r
   val jnzIntRe = """jnz\s+([a-h]+)\s+([-0-9]+)""".r
+  val jgzIntRe = """jgz\s+([a-h]+)\s+([-0-9]+)""".r
 
   def parse(lines: Seq[String]): Seq[(State) => (State, String)] = {
     lines
@@ -32,6 +33,7 @@ object Day23 {
           case mulRe(r1, r2) => (state: State) => (state + (r1 -> (state(r1) * state(r2))), "mul")
           case jnzIntIntRe(v1, v2) => (state: State) => if (v1.toLong != 0) (state.j(v2.toInt), "jnz") else (state.nop, "nop")
           case jnzIntRe(r, v) => (state: State) => if (state(r) != 0) (state.j(v.toInt), "jnz") else (state.nop, "nop")
+          case jgzIntRe(r, v) => (state: State) => if (state(r) > 0) (state.j(v.toInt), "jgz") else (state.nop, "nop")
         }
       )
   }
@@ -134,15 +136,16 @@ object Day23 {
       "sub g b",
       "jnz g 3",
       "set f 0",
-      "jnz 1 9",
+      "jnz 1 10",
+      "jgz g 5",
       "sub e -1",
       "set g e",
       "sub g b",
-      "jnz g -9",
+      "jnz g -10",
       "sub d -1",
       "set g d",
       "sub g b",
-      "jnz g -14",
+      "jnz g -15",
       "jnz f 2",
       "sub h -1",
       "set g b",
@@ -150,7 +153,7 @@ object Day23 {
       "jnz g 2",
       "jnz 1 3",
       "sub b -17",
-      "jnz 1 -24")
+      "jnz 1 -25")
     
     val input = parse(lines)
     val input1 = parse(lines1)
@@ -210,60 +213,62 @@ object Day23 {
 
     if (true)
       bench("part 2 opt") {
-        val part = execute(inputOpt, state = State(0, Map("a" -> 1)), limit = 100000)
+        val part = execute(inputOpt, state = State(0, Map("a" -> 1)))
 
         println("part 2 opt execution " + part._2 + " " + part._1)
         linesOpt.zipWithIndex.map(p => s"${p._2}: ${p._1} --- ${part._3.get(p._2)}") foreach println
       }
-    
-    val l = if (false) {
-      var h = 0
-      for (b <- cStart to cEnd by 17) {
-        var f = 1
-        for (d <- 2 until b) {
-          for (e <- 2 until b) {
-            if (e * d == b)
-              f = 0
-          }
-        }
-        if (f == 0)
-          h = h + 1
-      }
 
-      h
-    } else {
-      @tailrec
-      def cb(current: Int = 0, b: Int = cStart): Int = {
+    bench("part 2 native scala") {
+      val l = if (false) {
+        var h = 0
+        for (b <- cStart to cEnd by 17) {
+          var f = 1
+          for (d <- 2 until b) {
+            for (e <- 2 until b) {
+              if (e * d == b)
+                f = 0
+            }
+          }
+          if (f == 0)
+            h = h + 1
+        }
+
+        h
+      } else {
         @tailrec
-        def cd(d: Int = 2): Boolean = {
+        def cb(current: Int = 0, b: Int = cStart): Int = {
           @tailrec
-          def ce(e: Int = 2): Boolean = {
-            val r = d * e
-            if (r == b)
-              false
-            else if (r > b)
-              true
-            else if (e == b)
+          def cd(d: Int = 2): Boolean = {
+            @tailrec
+            def ce(e: Int = 2): Boolean = {
+              val r = d * e
+              if (r == b)
+                false
+              else if (r > b)
+                true
+              else if (e == b)
+                true
+              else
+                ce(e + 1)
+            }
+
+            if (d == b)
               true
             else
-              ce(e + 1)
+              ce() && cd(d + 1)
           }
-
-          if (d == b)
-            true
+          
+          if (b > cEnd)
+            current
           else
-            ce() && cd(d + 1)
+            cb(current + (if (cd()) 0 else 1), b + 17)
         }
-        
-        if (b > cEnd)
-          current
-        else
-          cb(current + (if (cd()) 0 else 1), b + 17)
+
+        cb()
       }
 
-      cb()
+      println(s"h=$l")
     }
-
-    println(s"h=$l")
   }
 }
